@@ -1,0 +1,111 @@
+%%             Numerical Modeling Theory & Applications
+% -------------------------------------------------------------------------
+%   Fall 2026
+%   Prof: T Gerya
+%   Viba Ravindra Udupa, MSc Computational sciences & engineering
+% -------------------------------------------------------------------------
+%
+%   Home Assignment Week 1 - due by 19th September 2026
+%
+%   Solve the following 1D ODE using the Finite Difference Method:
+%   d2/dx2 (Q) = 2x^2 + (-0.5)x + exp(x)
+%
+%   Subject to boundary conditions:
+%   Q(x=0)=0 and Q(x=L)=0
+% -----------------------END OF CODE DESCRIPTION---------------------------
+
+% -----------------------------CODE BEGINS---------------------------------
+
+clc
+clear all
+
+% -----------------DEFINE RELEVANT PARAMETERS & MATRICES-------------------
+
+L    = 1;           % Horizontal distance = 1 m
+N    = 101;         % Number of nodes along x
+dx   = L / (N-1);   % Formula to find length of each discritized element
+x    = 0:dx:L;      % Define an array of all x values
+
+RVEC = zeros(N,1); % Vector to store RHS of the system of equataions
+
+LMATrow  = [];     % Vector to store row indices of sparse matrix
+LMATcol  = [];     % Vector to store col indices of sparse matrix
+LMATval  = [];     % Vector to store values of the sparse matrix of row,col
+
+% ------------ OBTAINING GLOBAL MATRICES FOR THE SYSTEM-------------------
+
+% Calculate the factor 1/dx^2 to avoid calculation in every loop
+factor = 1/(dx^2);
+
+% RHS matrix definition
+RVEC = 2*x'.^2 - 0.5*x' + exp(x');
+
+% Iterate through every node in the finite 1D grid to obtain coeffient MAT
+for i = 1:1:N
+    % For first and last segments, we have boundary conditions to impose.
+    if (i == 1 || i == N)
+        % At suggestion of MATLAB documentation, replacing LMAT(i,i) = val
+        % with below lines of code for efficient memory allocation.
+        LMATrow = [LMATrow i];
+        LMATcol = [LMATcol i];
+        LMATval = [LMATval 1];
+
+        RVEC(i,1) = 0;
+    else
+        % For all intermediate segments
+        % Sparse matrix definition for i,i-1 coefficient
+        LMATrow = [LMATrow i];
+        LMATcol = [LMATcol i-1];
+        LMATval = [LMATval factor];
+
+        % Sparse matrix definition for i,i coefficient
+        LMATrow = [LMATrow i];
+        LMATcol = [LMATcol i];
+        LMATval = [LMATval -2*factor];
+        
+        % Sparse matrix definition for i,i+1 coefficient
+        LMATrow = [LMATrow i];
+        LMATcol = [LMATcol i+1];
+        LMATval = [LMATval factor];
+    end
+end
+
+LMAT = sparse(LMATrow', LMATcol', LMATval');
+
+% ----------------------------SOLVE MATRICES-------------------------------
+
+Q = LMAT\RVEC;
+
+% ------------------------- ANALYTICAL SOLUTION----------------------------
+
+N_a  = 1001;
+dx_a = L/(N_a-1);
+x_a  = 0:dx_a:L;
+Q_a  = (1/6).*(x_a.^4) - (1/12).*(x_a.^3) + exp(x_a) +...
+    x_a .* ((1-exp(L))/L -L^3/6 + L^2/12) - 1;
+
+% ---------------------------- VISUALIZATION ------------------------------
+
+figure(1); clf;
+subplot(1,2,1)
+plot(x,Q,'o','MarkerSize',5,'MarkerFaceColor','r','MarkerEdgeColor','r');
+hold on
+plot(x_a,Q_a,'-k','LineWidth',2);
+xlabel('X')
+ylabel('Q')
+legend('Numerical solution N = 101','Analytical solution')
+title('Numerical ')
+grid on
+
+subplot(1,2,2)
+
+
+
+%----------------------------- EVALUATION----------------------------------
+
+idx_n = 12;  % Numerical solution index for benchmarking.
+idx_a = 120; % Analytical solution index for benchmarking.
+
+fprintf("Given ODE: d2/dx2 (Q) = 2x^2 + (-0.5)x + exp(x)");
+fprintf("\n\nNumerical solution at 12th segment for nodes = %d: \nQ(%d) = %.15f @ x(%d) = %f",N,idx_n,Q(idx_n),idx_n,x(idx_n));
+fprintf("\n\nAnalytical solution at 120th segment for nodes = %d: \nQ_a(%d) = %.15f @ x_a(%d) = %f\n", N_a,idx_a,Q_a(idx_a),idx_a,x_a(idx_a))
